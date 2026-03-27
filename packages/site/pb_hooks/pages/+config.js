@@ -1,4 +1,5 @@
 module.exports = {
+  debug: false,
   plugins: [
     {
       name: `pocketpages-plugin-ejs`,
@@ -6,5 +7,6 @@ module.exports = {
       debug: true,
     },
     'pocketpages-plugin-marked',
+    'pocketpages-plugin-datastar',
   ],
 }

@@ -1,5 +1,74 @@
 # pocketpages
 
+## 0.22.3
+
+### Patch Changes
+
+- 1fdcbeb: Fix bad publish
+- Updated dependencies [1fdcbeb]
+  - pocketpages-plugin-ejs@0.1.2
+
+## 0.22.2
+
+### Patch Changes
+
+- 097d937: Add debugging output for non-html content
+
+## 0.22.1
+
+### Patch Changes
+
+- 5f35eaa: Fix: escape glob syntax for layout routing with multiple params route (#84)
+- 5f35eaa: Feat: Algolia site search
+
+## 0.22.0
+
+### Minor Changes
+
+- 8df3b91: store() returns new value after setting
+
+## 0.21.0
+
+### Minor Changes
+
+- e8c3d96: Early return custom content types (proceed only if text/html)
+- 7c30af9: Update params to include querystring values
+- f0ed079: Automatically recursively parse URL querystring in request.url and globalApi.url
+
+### Patch Changes
+
+- 8c540ba: Fix: update header method to return string or undefined
+- c01bf43: Improve invalid plugin error logic
+- 31b4b38: add debug logging for header and echo responses in MiddlewareHandler
+- 3317d2e: Add store() debugging output
+
+## 0.20.0
+
+### Minor Changes
+
+- 92b14b4: Add support for DEBUG env var
+
+### Patch Changes
+
+- 7fe3aa1: Fix: restored Typescript typings
+
+## 0.19.0
+
+### Minor Changes
+
+- 1e55ca2: Add `verbose` debugging option to debug core pocketpages operations
+
+### Patch Changes
+
+- 314441c: Do not display +config.js loading error if the file is not present
+- c47a0ee: Update `minimal` starter to use Tailwind
+
+## 0.18.2
+
+### Patch Changes
+
+- 46d4cd8: Fix: show detailed errors in debug mode only
+
 ## 0.18.1
 
 ### Patch Changes

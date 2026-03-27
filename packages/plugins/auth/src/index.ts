@@ -52,7 +52,7 @@ export type CreateUserOptions = {
 const safeParseJson = (value: string | undefined) => {
   if (!value) return value
   try {
-    return JSON.parse(value)
+    return JSON.parse(value) as unknown
   } catch {
     return value
   }
@@ -159,18 +159,33 @@ const authPluginFactory: PluginFactory = (config) => {
        * If the route is protected, check the auth
        */
       // https://github.com/benallfree/pocketbase/blob/f38700982c1b46ac1a51ff59e985fae6fc332ccb/apis/middlewares.go#L181
-      const cookieToken = safeParseJson(request.cookies<any>('pb_auth'))?.token
-      dbg(`pb_auth cookie token: ${cookieToken || `<none>`}`)
+      const rawCookie = request.cookies<string>('pb_auth')
+      if (!rawCookie) return
 
-      if (cookieToken) {
+      const cookieRecordAuth = safeParseJson(rawCookie) as AuthData
+      if (typeof cookieRecordAuth !== 'object') {
+        dbg(`invalid auth cookie format: ${cookieRecordAuth}`)
+        response.cookie('pb_auth', '', { maxAge: 0 })
+        return
+      }
+      if (cookieRecordAuth?.token) {
         try {
-          const authRecord = $app.findAuthRecordByToken(cookieToken)
-          dbg(`cookie token swapped for auth record: ${authRecord.id}`)
-          request.event.auth = authRecord
-          request.auth = authRecord
-          request.authToken = cookieToken
+          const validAuthRecord = $app.findAuthRecordByToken(
+            cookieRecordAuth.token
+          )
+          if (!validAuthRecord) {
+            dbg(`invalid auth token found in cookie: ${cookieRecordAuth.token}`)
+            response.cookie('pb_auth', '', { maxAge: 0 })
+            return
+          }
+          $apis.enrichRecord(request.event, validAuthRecord)
+
+          // Attempt to use the record set during authWith* methods (these may be enriched)
+          request.auth = validAuthRecord
+          request.authToken = cookieRecordAuth.token
         } catch (e) {
           dbg(`error fetching auth record: ${e}`)
+          response.cookie('pb_auth', '', { maxAge: 0 })
         }
       }
     },
@@ -294,16 +309,20 @@ const authPluginFactory: PluginFactory = (config) => {
       }
 
       api.signOut = () => {
-        api.response.cookie(`pb_auth`, '')
+        api.response.cookie(`pb_auth`, '', { maxAge: 0 })
       }
 
       api.signIn = (authData: RecordAuthResponse<AuthModel>) => {
+        const { record, token } = authData
+        if (!record) {
+          throw new Error('No auth record found')
+        }
         dbg(
-          `signing in with token and saving to pb_auth cookie: ${authData.record.id} ${authData.token}`
+          `signing in with token and saving to pb_auth cookie: ${record.id} ${token}`
         )
         api.response.cookie(`pb_auth`, {
-          token: authData.token,
-          record: toPlainObject(authData.record),
+          token,
+          record: toPlainObject(record),
         })
       }
     },

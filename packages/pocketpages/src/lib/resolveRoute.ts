@@ -1,16 +1,22 @@
-import * as qs from 'qs-lite'
-import URLParse from 'url-parse'
 import { Route } from '../handlers/AfterBootstrapHandler'
 import { dbg } from './debug'
 import { fingerprint } from './fingerprint'
-import { Cache, PagesParams } from './types'
+import { Cache, PagesParams, Url } from './types'
 
-export const resolveRoute = (url: URLParse<string>, routes: Route[]) => {
+export type ResolvedRoute = {
+  route: Route
+  params: PagesParams
+}
+
+export const resolveRoute = (
+  url: Url,
+  routes: Route[]
+): ResolvedRoute | null => {
   const { config } = $app.store<Cache>().get(`pocketpages`)
 
   const urlPath = url.pathname.slice(1)
   // dbg(`***resolveRoute`, { url, urlPath })
-  const params: PagesParams = qs.parse(url.query.slice(1))
+  const params: PagesParams = url.query
   const tryFnames = [urlPath || 'index']
   if (tryFnames[0] !== 'index') {
     tryFnames.push(`${urlPath}/index`)
@@ -22,7 +28,24 @@ export const resolveRoute = (url: URLParse<string>, routes: Route[]) => {
       .split('/')
       .filter((p) => p)
     // dbg(`incoming parts`, parts)
-    for (const route of routes) {
+
+    // Sort routes to prioritize exact matches over parameter matches
+    // Routes with higher specificity (more exact segments) should be checked first
+    const sortedRoutes = routes.slice().sort((a, b) => {
+      const getSpecificity = (route: Route) =>
+        route.segments.reduce(
+          (acc, segment) => acc + (segment.paramName ? 1 : 10),
+          0
+        )
+      const aSpecificity = getSpecificity(a)
+      const bSpecificity = getSpecificity(b)
+      if (aSpecificity !== bSpecificity) {
+        return bSpecificity - aSpecificity // Sort by specificity, descending
+      }
+      return 0
+    })
+
+    for (const route of sortedRoutes) {
       // dbg(`checking route`, route)
       const matched = route.segments.every((segment, i) => {
         const { nodeName, paramName } = segment

@@ -2,10 +2,10 @@ import { forEach, keys } from '@s-libs/micro-dash'
 import { error, info } from 'pocketbase-log'
 import { fs } from 'pocketbase-node'
 import { dbg } from '../lib/debug'
+import { globalApi } from '../lib/globalApi'
 import { pagesRoot } from '../lib/helpers'
 import { loadPlugins } from '../lib/loadPlugins'
 import { Cache, PagesConfig, PagesInitializerFunc } from '../lib/types'
-import { globalApi } from '../lib/globalApi'
 
 export type Route = {
   relativePath: string
@@ -38,6 +38,16 @@ export const LOADER_METHODS = [
   'delete',
 ] as const
 
+const toBoolean = (value: string | boolean | undefined) => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+  if (typeof value === 'string') {
+    return ['true', '1', 'yes', 'on', 'enabled'].includes(value.toLowerCase())
+  }
+  return false
+}
+
 export const AfterBootstrapHandler: PagesInitializerFunc = (e) => {
   info(`pocketpages startup`)
 
@@ -56,9 +66,12 @@ export const AfterBootstrapHandler: PagesInitializerFunc = (e) => {
   // dbg({ configPath })
   const config: PagesConfig = {
     plugins: [`pocketpages-plugin-ejs`],
-    debug: false,
+    debug: toBoolean(process.env.DEBUG) ? 'verbose' : false,
     ...(() => {
       try {
+        if (!fs.existsSync(configPath)) {
+          return {}
+        }
         const mod = require(configPath)
         if (typeof mod === 'function') {
           return mod(globalApi) as Partial<PagesConfig>
@@ -70,7 +83,7 @@ export const AfterBootstrapHandler: PagesInitializerFunc = (e) => {
       }
     })(),
   }
-  if (config.debug) {
+  if (config.debug === 'verbose') {
     $app.store().set('__pocketpages_debug', true)
   }
   keys(config).forEach((key) => {
@@ -169,8 +182,8 @@ export const AfterBootstrapHandler: PagesInitializerFunc = (e) => {
             $filepath
               .join(pagesRoot, ...pathParts, `+layout.*`)
               // Escape glob [] syntax used in parameter routing
-              .replace('[', '\\[')
-              .replace(']', '\\]')
+              .replace(/\[/g, '\\[')
+              .replace(/\]/g, '\\]')
           )
           // dbg({ pathParts, maybeLayouts })
           if (maybeLayouts && maybeLayouts.length > 0) {
@@ -227,9 +240,9 @@ export const AfterBootstrapHandler: PagesInitializerFunc = (e) => {
       return route
     })
     .filter((r) => r.segments.length > 0)
-  // dbg({ routes })
+  dbg({ routes })
 
-  // dbg({ config })
+  dbg({ config })
 
   const cache: Cache = { routes, config }
   // dbg({ cache })
